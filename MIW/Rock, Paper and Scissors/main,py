@@ -1,0 +1,106 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+states = ['Rock', 'Paper', 'Scissors']
+p_entry = [0.33, 0.33, 0.34] # Initial probability for each state
+
+            # Rock | Paper| Scissors 
+p_rock =      [0.33, 0.33, 0.34]     
+p_paper =     [0.33, 0.33, 0.34]    
+p_scissors =  [0.33, 0.33, 0.34]  
+
+points = 0 # Sum of points for the player (reward: +1, draw: +0, loss: -1)
+
+def CheckResult(move, response, points):
+  #Checks result of the AI response """
+  # Draw situation
+  if(move == response):
+    print('Draw')
+  else:
+    # Win situation
+    if((move == 'Rock' and response == 'Scissors') or (move == 'Paper' and response == 'Rock') or (move == 'Scissors' and response == 'Paper')):
+      points += 1
+      print('You won 1 point')
+    # Loss situation
+    else: 
+      points -= 1
+      print('You Lost: 1 point')
+  return points
+
+def Learn(p, index):
+  #Increase or decrease probability of next input value
+  if (index == 0):
+    p[1] += 0.02
+    p[0] -= 0.01
+    p[2] -= 0.01
+  elif (index == 1):
+    p[2] += 0.02
+    p[1] -= 0.01
+    p[0] -= 0.01
+  else:
+    p[0] += 0.02
+    p[1] -= 0.01
+    p[2] -= 0.01
+
+numberOfIterations = int(input('How many matches do you want to play? \n'))
+print('Number of matches: ' + str(numberOfIterations) + '\n')
+
+matches = np.zeros(numberOfIterations)
+
+# First match
+print ('Match: 1')
+print('Choose: Rock Paper, Scissors')
+lastUserInput = input('Your turn: ')
+
+answer = np.random.choice(states, p=p_entry)
+print('AI chooses: ' + str(answer))
+
+matches[0] = CheckResult(lastUserInput, answer, points)
+
+# Main loop
+for i in range (numberOfIterations - 1):
+
+  print('\nMatch: ' + str(i+2))
+  print('Choose: Rock, Paper, Scissors')
+  userInput = input('Your turn: ')
+
+  if(lastUserInput == 'Rock'):
+    answer = np.random.choice(states, p=p_rock)
+    if(userInput == states[0]): # R
+      Learn(p_rock, 0)
+    if(userInput == states[1]): # P
+      Learn(p_rock, 1)
+    if(userInput == states[2]): # S
+      Learn(p_rock, 2)
+  print(p_rock)
+
+  if(lastUserInput == 'Paper'):
+    answer = np.random.choice(states, p=p_paper)
+    if(userInput == states[0]): # R
+      Learn(p_paper, 0)
+    if(userInput == states[1]): # P
+      Learn(p_paper, 1)
+    if(userInput == states[2]): # S
+      Learn(p_paper, 2)
+  
+  if(lastUserInput == 'Scissors'):
+    answer = np.random.choice(states, p=p_scissors)
+    if(userInput == states[0]): # R
+      Learn(p_scissors, 0)
+    if(userInput == states[1]): # P
+      Learn(p_scissors, 1)
+    if(userInput == states[2]): # S
+      Learn(p_scissors, 2)
+
+  print('AI chooses: ' + str(answer))
+
+  matches[i+1] = matches[i] + CheckResult(userInput, answer, points) # Add point into the array
+  
+  lastUserInput = userInput 
+
+print('\n')
+# Print array of point sum and draw graph
+print(matches)
+plt.plot(matches, 'ro')
+plt.ylabel('Points')
+plt.show()
