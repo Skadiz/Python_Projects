@@ -1,2 +1,2 @@
 # Python_Projects
-Project implemented in python from university and courses
+Projects implemented in python from university and courses
