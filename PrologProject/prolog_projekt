@@ -1,0 +1,234 @@
+/* ---ZMIENNE I WARUNKI--- */
+% Pomieszczenia (aktualna pozycja, opis pozycji):
+room(bedroom,
+     ' Jestes w swojej sypialni. Przed toba sa drzwi.').
+room(corridor,
+     ' Zostajesz w przedpokoju. Rozgladasz sie uwaznie, ale nie ma tu nic podejrzanego.
+    Te dzwieki dochodza z Twojej zamknietej lazienki przed Toba! Lepiej nie idz tam bez broni...').
+room(wardrobe,
+     ' Jestes w szafie. Idealne miejsce do ukrycia sie w horrorach.
+    Slychac drapanie pazurow dochodzace zza sciany oddzielajacej lazienke od garderoby').
+room(bathroom,
+     ' Wszedles do lazienki. sciany i sufit pokryte sa krwia.
+    Obok ciebie stoi zakapturzony stwor. Stwor krzyczy i rzuca sie na ciebie!').
+room(mainHallway, 
+     ' Jestes w glownym korytarzu. Nie dzieje sie tu nic niezwyklego.').
+room(diningRoom,
+     ' Jestes w jadalni ').
+room(livingRoom,
+     ' Jestes w salonie. To nie jest dobry czas na netflixa!').
+room(garden,
+     ' Jestes w ogrodzie, na zewnatrz domu.').
+
+% sciezki (aktualna pozycja, nastepna pozycja, kierunek):
+path(bedroom, corridor, north).
+path(corridor, bedroom, south).
+path(corridor, wardrobe, west).
+path(wardrobe, corridor, east).
+path(corridor, bathroom, north).
+path(bathroom, corridor, south).
+path(corridor, mainHallway, downstairs).
+path(mainHallway, corridor, upstairs).
+path(mainHallway, garden, east).
+path(garden, mainHallway, west).
+path(mainHallway, diningRoom, west).
+path(diningRoom, mainHallway, east).
+path(diningRoom, livingRoom, south).
+path(livingRoom, diningRoom, north).
+
+% Opisy (pokoj, opis pokoju):
+description(bedroom, 
+            ' Rozgladasz sie za czyms pozytecznym... Nic w tym pomieszczeniu cie nie ochroni').
+description(corridor, 
+            ' Zostala ci szafa. Przed toba tajemnicze drzwi do lazienki. W poblizu znajduja sie schody na parter.').
+description(wardrobe, 
+            ' W szafie znajduje sie sejf. W srodku znajduje sie pistolet z amunicja. ').
+description(mainHallway, 
+            ' Nadal slychac te dzwieki dochodzace z pietra wyzej. Lepiej sie stamtad wynos!
+            Po lewej stronie widac jadalnie, a po prawej wyjscie do ogrodu. W poblizu sa schody na parter ').
+description(diningRoom,
+            ' Na srodku pokoju widac duzy stol jadalny. Leza na nim klucze do domu. Zabierz je i wynos sie z tego miejsca! ').
+description(livingRoom,
+            ' Nie ma tu nic przydatnego. Nawet nie waz sie teraz ogladac telewizji! ').
+
+% Zmienne dynamiczne:
+:- dynamic position/2.
+:- dynamic hasPistol/2.
+:- dynamic hasKeys/2.
+:- dynamic hasFullEq/2.
+
+
+/* ---INWENTARZ--- */
+inventory([pistol, keys]).
+showItems([First|Second]) :- write('Przedmioty: '), write(First), showItems(Second), nl.
+showPistol([First|_]) :- write('Przedmioty: '), write(First), nl.
+showKeys([_|Second]) :- write('Przedmioty: '), write(Second), nl. 
+
+items :- % pokazuje klucze
+    position(you, CurrentPos),
+    hasKeys(you, CurrentPos),
+    inventory(Item), showKeys(Item).
+
+items :- % pokazuje pistolet
+    position(you, CurrentPos),
+    hasPistol(you, CurrentPos),
+    inventory(Item), showPistol(Item).
+
+items :- % pokazuje wszystkie przedmioty
+    position(you, CurrentPos),
+    hasFullEq(you, CurrentPos),
+    inventory(Item), showItems(Item).
+
+items :- % pokazuje te wiadomosc, gdy nie masz przy sobie zadnych przedmiotow
+    writeln(' W tej chwili nie masz przy sobie zadnych przedmiotow...').
+
+
+/* ---RUCHY--- */
+move(items) :-
+    items.
+
+move(take) :- % wez pistolet
+    position(you, CurrentPos),
+    pistol(CurrentPos).
+
+move(pickup) :- % wez klucze
+    position(you, CurrentPos),
+    keys(CurrentPos).
+    
+move(lookAround) :- % pokazuje opis aktualnej pozycji
+    position(you, CurrentRoom), description(CurrentRoom, RoomDescription), writeln(RoomDescription).
+
+move(Direction) :- % idzie w okreslonym kierunku
+    position(you, CurrentPos),
+    path(CurrentPos, NextPos, Direction),
+    write('Ty idziesz do '), write(Direction), write('...'),
+    retract(position(you, CurrentPos)),
+    assert(position(you, NextPos)),
+    showPosition,
+    !.   
+
+move(_) :- % domyslna wiadomosc po wpisaniu nieprawidlowego polecenia
+    writeln('Nie mozesz tam isc! '),
+    showPosition.
+
+/* ---SYTUACJE--- */
+escape :- % wygrana sytuacja, gdy gracz ucieknie
+    position(escape, CurrentPos),
+    position(you, CurrentPos),
+    writeln('Uciekles przed tym strasznym potworem. Gratulacje! '), nl,
+	retract(position(you, CurrentPos)),
+	assert(position(you, gameOver)),
+	!.
+escape.
+
+monster :- % stracona sytuacji, gdy gracz zostanie zabity przez potwora
+    position(monster, CurrentPos),
+    position(you, CurrentPos),
+    writeln('Potwor tnie cie swoimi pazurami na smierc. Zostales zabity przez potwora... '), nl,
+    retract(position(you, CurrentPos)),
+    assert(position(you, gameOver)),
+    !.
+monster.
+
+monster :- % wygrana sytuacja, gdy gracz zabije potwora
+    position(monster, CurrentPos),
+    position(you, CurrentPos),
+    hasPistol(you, CurrentPos),
+    writeln('Zaczynasz strzelac w kierunku potwora. Oprozniles caly magazynek. Potwor upada na ziemie. '),
+    writeln('Gratulacje. Zrobiles to. Zabiles potwora! '),
+	retract(position(you, CurrentPos)),
+	assert(position(you, gameOver)),
+	!.
+monster.
+
+pistol(CurrentPos) :- % sytuacja, gdy gracz bierze pistolet
+    position(pistol, CurrentPos),
+    position(you, CurrentPos),
+    retract(hasPistol(you, default)),
+    assert(hasPistol(you, _)),
+    writeln('Bierzesz pistolet. Teraz jestes gotowy stawic czola temu potworowi.'),
+    !.
+
+pistol(_) :- % sytuacja, gdy nie ma nic do zabrania
+    writeln('Nie ma nic do zabrania! '),
+    !.
+
+keys(CurrentPos) :- % sytuacja, gdy gracz bierze klucz
+    position(keys, CurrentPos),
+    position(you, CurrentPos),
+    retract(hasKeys(you, default)),
+    assert(hasKeys(you, _)),
+    writeln('Odbierasz klucze do drzwi wejsciowych. Mozesz teraz uciec.'),
+    !.
+
+keys(_) :- % sytuacja, gdy nie ma co podniesc
+    writeln('Nie ma nic do odebrania!'),
+    !.
+
+hasPistol(you, default).
+hasKeys(you, default).
+
+    
+/* ---TEKST--- */
+showControlls :- % pokazuje liste dostepnych elementow sterujacych
+    nl,
+    writeln('CONTROLLS:'),
+    writeln('north		:		idz do pokoju obok ciebie'),
+    writeln('south		:		idz do pokoju za tobz'),
+    writeln('west		:		idz do pokoju po twojej lewej'),
+    writeln('east		:		idz do pokoju po twojej prawej'),
+    writeln('downstairs	:		zejsc na dol'),
+    writeln('upstairs	:		idz na gore'),
+    writeln('lookAround	:		rozejrzyj sie po pokoju'),
+    writeln('pickup		:		wez klucze'),
+    writeln('take		:		wez bron'),
+    writeln('items		:		pokazuje przedmioty(inwentarz) ').
+
+showIntro :- % pokazuje wprowadzenie do historii
+	nl,
+    writeln('WPROWADZENIE:'),
+    writeln('Budzisz sie przestraszony w swoim lozku. Znowu sniles o jednym z tych strasznych koszmarow.'),
+    writeln('Twoja reka szybko siega po telefon. Sprawdzasz godzine. Jest 3 nad ranem.'),   
+    writeln('Znowu probujesz zasnac, ale nie mozesz nawet zamrozic oka. Wstajesz z lozka i idziesz do drzwi.'),
+    writeln('Wtedy dzieje sie cos dziwnego...'),
+    writeln('Kiedy twoja reka siega do klamki, slyszysz przerazajacy dzwiek dochodzacy zza drzwi.'),
+    writeln('Dzwiek, jak ten w twoich koszmarach. Myslisz, ze znowu musisz snic. Instynktownie szczypiesz swoja skore.'),
+    writeln('Nie snisz! Znowu slychac ten przerazajacy dzwiek. Mozesz poczuc chlod wzdluz kregoslupa.'),
+    writeln('Musisz sprawdzic zrodlo tych przerazajacych dzwiekow').
+
+showPosition :- % pokazuje aktualna pozycje
+    nl, 
+    position(you, CurrentPos), room(CurrentPos, PosDescription), writeln(PosDescription).
+
+
+/* ---MAIN--- */
+moveHandler :- % koniec glownej petli
+    position(you, gameOver),
+    writeln('Gra skonczona. Dzieki za gre!'),
+    !.
+
+moveHandler :- % glowna petla
+    nl,
+    writeln('Co zrobisz?'),
+    read(Move),
+    call(move(Move)),
+    monster,
+    escape,
+    moveHandler.
+
+setGame :- % ustawia pozycje obiektow
+    writeln('ustawianie gry...'),
+    retractall(position(_,_)),
+    assert(position(you, bedroom)),
+    assert(position(monster, bathroom)),
+    assert(position(pistol, wardrobe)),
+    assert(position(keys, diningRoom)),
+    assert(position(escape, garden)).
+
+start :- % uruchom to polecenie, aby rozpoczac gre :)
+    setGame,
+    writeln('Rozpoczela sie nowa gra!'),
+    showControlls,
+    showIntro,
+    showPosition,
+    moveHandler.
